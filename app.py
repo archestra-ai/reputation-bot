@@ -214,6 +214,20 @@ def post_or_update_issue_reputation(issue_number):
     
     logger.info(f"Found {len(participants)} participants: {participants}")
     
+    # Check if there's an existing comment with all participants
+    existing_comment = github_client.find_bot_comment(REPO_NAME, issue_number)
+    if existing_comment:
+        existing_usernames = github_client.extract_usernames_from_comment(existing_comment['body'])
+        logger.info(f"Existing comment has users: {existing_usernames}")
+        
+        # Check if all current participants are already in the existing comment
+        if participants.issubset(existing_usernames):
+            logger.info(f"All participants {participants} are already in the existing comment. Skipping update.")
+            return
+        else:
+            new_participants = participants - existing_usernames
+            logger.info(f"New participants detected: {new_participants}. Updating comment.")
+    
     # Collect all participant data first
     participant_data = []
     for username in participants:
@@ -239,8 +253,14 @@ def post_or_update_issue_reputation(issue_number):
         reputation_score = participant['score']
         username = participant['username']
         
-        pr_str = f"{reputation_data['merged_prs']}✅ {reputation_data['open_prs']}🔄 {reputation_data['closed_prs']}❌"
-        activity_str = f"{reputation_data['issues']} issues, {reputation_data['comments']} comments"
+        # Format PR counts as clickable links
+        merged_link = f"[{reputation_data['merged_prs']}✅](https://github.com/archestra-ai/archestra/pulls?q=is%3Apr%20author%3A{username}%20is%3Amerged)"
+        open_link = f"[{reputation_data['open_prs']}🔄](https://github.com/archestra-ai/archestra/pulls?q=is%3Apr%20author%3A{username}%20is%3Aopen)"
+        closed_link = f"[{reputation_data['closed_prs']}❌](https://github.com/archestra-ai/archestra/pulls?q=is%3Apr%20author%3A{username}%20is%3Aclosed%20is%3Aunmerged)"
+        pr_str = f"{merged_link} {open_link} {closed_link}"
+        # Format activity with clickable issue count
+        issues_link = f"[{reputation_data['issues']} issues](https://github.com/archestra-ai/archestra/issues?q=is%3Aissue%20author%3A{username})"
+        activity_str = f"{issues_link}, {reputation_data['comments']} comments"
         
         # Format assigned issues as a clickable link
         assigned_count = reputation_data.get('assigned_issues', 0)

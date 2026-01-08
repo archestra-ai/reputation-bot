@@ -244,6 +244,19 @@ class GithubClient:
             logger.error(f"Failed to post comment: {str(e)}")
             raise
     
+    def extract_usernames_from_comment(self, comment_body: str) -> Set[str]:
+        """Extract usernames from a bot comment body."""
+        import re
+        usernames = set()
+        
+        # Look for usernames in the table format: | **@username** |
+        pattern = r'\| \*\*@([a-zA-Z0-9][\w-]*)\*\* \|'
+        matches = re.findall(pattern, comment_body)
+        usernames.update(matches)
+        
+        logger.info(f"Extracted {len(usernames)} usernames from comment: {usernames}")
+        return usernames
+    
     def find_bot_comment(self, repo_name: str, issue_number: int) -> Optional[Dict]:
         """Find an existing bot comment on an issue."""
         logger.info(f"Searching for existing bot comment on issue #{issue_number}")
