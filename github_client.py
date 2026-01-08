@@ -185,6 +185,10 @@ class GithubClient:
         comment_count = 0
         # Limit to first 30 comments for performance
         for comment in list(issue.get_comments())[:30]:
+            # Skip London-Cat bot
+            if comment.user.login == 'London-Cat':
+                logger.info(f"Skipping comment from London-Cat bot")
+                continue
             participants.add(comment.user.login)
             comment_count += 1
             if len(participants) >= 10:  # Limit to 10 participants max
@@ -193,9 +197,9 @@ class GithubClient:
         
         logger.info(f"Processed {comment_count} comments")
         
-        # Filter out bot accounts if needed
+        # Filter out bot accounts and London-Cat
         before_filter = len(participants)
-        participants = {p for p in participants if not p.endswith('[bot]')}
+        participants = {p for p in participants if not p.endswith('[bot]') and p != 'London-Cat'}
         logger.info(f"Participants after filtering bots: {len(participants)} (filtered {before_filter - len(participants)} bots)")
         logger.info(f"Participants: {list(participants)}")
         
