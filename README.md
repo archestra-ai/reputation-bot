@@ -52,7 +52,7 @@ gcloud run deploy reputation-bot \
   --allow-unauthenticated \
   --set-env-vars="^@^GITHUB_TOKEN=YOUR_GITHUB_TOKEN@GITHUB_WEBHOOK_SECRET=YOUR_WEBHOOK_SECRET@CORE_TEAM_MEMBERS=ashlkv,iskhakov,Konstantinov-Innokentii,joeyorlando,brojd,Matvey-Kuk" \
   --memory 512Mi \
-  --max-instances 3
+  --max-instances 1
 ```
 
 Note the URL returned (e.g., `https://reputation-bot-xxx.run.app`)
