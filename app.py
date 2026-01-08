@@ -45,6 +45,9 @@ def verify_webhook_signature(payload, signature):
     ).hexdigest()
     
     is_valid = hmac.compare_digest(expected_signature, signature)
+    if not is_valid:
+        logger.info(f"Expected signature: {expected_signature[:20]}...")
+        logger.info(f"Received signature: {signature[:20]}...")
     logger.info(f"Webhook signature verification: {'Valid' if is_valid else 'Invalid'}")
     return is_valid
 
@@ -54,12 +57,63 @@ def webhook():
     signature = request.headers.get('X-Hub-Signature-256', '')
     logger.info(f"Signature present: {bool(signature)}")
     
-    if not verify_webhook_signature(request.data, signature):
+    # Get raw data for signature verification
+    raw_data = request.get_data()
+    
+    if not verify_webhook_signature(raw_data, signature):
         logger.error("Invalid webhook signature")
         return jsonify({'error': 'Invalid signature'}), 401
     
     event = request.headers.get('X-GitHub-Event')
-    payload = request.json
+    
+    # Handle ping event (might have empty body)
+    if event == 'ping':
+        logger.info("Received ping event")
+        return jsonify({'status': 'pong'}), 200
+    
+    # Parse payload (can be JSON or form-encoded)
+    if not raw_data:
+        logger.warning(f"Empty payload for event: {event}")
+        return jsonify({'status': 'ok'}), 200
+    
+    payload = None
+    content_type = request.headers.get('Content-Type', '').lower()
+    
+    # Try to parse based on content type
+    if 'application/x-www-form-urlencoded' in content_type:
+        # GitHub sometimes sends form-encoded webhooks
+        try:
+            from urllib.parse import parse_qs
+            form_data = parse_qs(raw_data.decode('utf-8'))
+            if 'payload' in form_data:
+                import json as json_module
+                payload = json_module.loads(form_data['payload'][0])
+                logger.info("Successfully parsed form-encoded webhook payload")
+        except Exception as e:
+            logger.error(f"Failed to parse form-encoded payload: {e}")
+            logger.error(f"Raw data: {raw_data[:200]}")
+            return jsonify({'error': 'Invalid form data'}), 400
+    else:
+        # Try to parse as JSON
+        try:
+            import json as json_module
+            payload = json_module.loads(raw_data)
+            logger.info("Successfully parsed JSON webhook payload")
+        except json_module.JSONDecodeError as e:
+            # Fallback: try form-encoded even without correct content-type
+            try:
+                from urllib.parse import parse_qs
+                form_data = parse_qs(raw_data.decode('utf-8'))
+                if 'payload' in form_data:
+                    payload = json_module.loads(form_data['payload'][0])
+                    logger.info("Successfully parsed form-encoded webhook payload (fallback)")
+                else:
+                    raise ValueError("No 'payload' field in form data")
+            except Exception as e2:
+                logger.error(f"Failed to parse JSON payload: {e}")
+                logger.error(f"Failed to parse as form data: {e2}")
+                logger.error(f"Raw data: {raw_data[:200]}")
+                return jsonify({'error': 'Invalid payload format'}), 400
     
     logger.info(f"GitHub Event: {event}")
     logger.info(f"Payload action: {payload.get('action') if payload else 'No payload'}")
