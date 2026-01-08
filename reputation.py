@@ -16,7 +16,7 @@ def calculate_reputation(data: Dict) -> int:
     score += data['core_thumbs_up'] * 15
     score -= data['core_thumbs_down'] * 50
     
-    return max(0, score)  # Ensure non-negative score
+    return score  # Allow negative scores
 
 def format_reputation_line(score: int, data: Dict) -> str:
     """Format the reputation data into a compact single line."""

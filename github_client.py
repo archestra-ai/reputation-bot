@@ -244,6 +244,19 @@ class GithubClient:
             logger.error(f"Failed to post comment: {str(e)}")
             raise
     
+    def close_pull_request(self, repo_name: str, pr_number: int):
+        """Close a pull request."""
+        logger.info(f"Closing PR #{pr_number} in {repo_name}")
+        
+        try:
+            repo = self.github.get_repo(repo_name)
+            pr = repo.get_pull(pr_number)
+            pr.edit(state='closed')
+            logger.info(f"PR #{pr_number} closed successfully")
+        except Exception as e:
+            logger.error(f"Failed to close PR: {str(e)}")
+            raise
+    
     def extract_usernames_from_comment(self, comment_body: str) -> Set[str]:
         """Extract usernames from a bot comment body."""
         import re

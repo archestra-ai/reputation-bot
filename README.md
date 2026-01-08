@@ -1,10 +1,17 @@
 # GitHub Reputation Bot
 
-Bot that posts reputation comments on PRs and issues for archestra-ai/archestra.
+Bot that posts reputation comments on PRs and issues for archestra-ai/archestra. Automatically closes pull requests from users with very low reputation scores to maintain code quality.
+
+## Features
+
+- **Reputation Tracking**: Calculates and displays user reputation on PRs and issues
+- **Automatic PR Closing**: Closes PRs from users with reputation below the configured threshold
+- **Clickable Statistics**: All counts (PRs, issues, assigned) link to filtered GitHub searches
+- **Smart Updates**: Skips updating comments when no new participants have joined
 
 ## Reputation Scoring
 
-The bot calculates reputation scores based on GitHub activity:
+The bot calculates reputation scores based on GitHub activity. **Note: Scores can be negative.**
 
 ### Points System
 - **Merged PRs**: +20 points
@@ -14,6 +21,9 @@ The bot calculates reputation scores based on GitHub activity:
 - **Comments**: Displayed for context but don't affect score
 - **Core team 👍**: +15 points (reactions on issues/PRs authored by the user)
 - **Core team 👎**: -50 points (reactions on issues/PRs authored by the user)
+
+### Automatic PR Closing
+Pull requests from users with reputation below the threshold (default: -80) are automatically closed with an explanatory comment. This helps maintain code quality by preventing spam from users with poor contribution history.
 
 ### Core Team Reactions
 Core team members' reactions carry significant weight. The bot tracks thumbs up (👍) and thumbs down (👎) reactions from designated core team members on issues and pull requests created by users. These reactions are only counted on the main issue/PR body, not on comments within them.
@@ -50,7 +60,7 @@ gcloud run deploy reputation-bot \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
-  --set-env-vars="^@^GITHUB_TOKEN=YOUR_GITHUB_TOKEN@GITHUB_WEBHOOK_SECRET=YOUR_WEBHOOK_SECRET@CORE_TEAM_MEMBERS=ashlkv,iskhakov,Konstantinov-Innokentii,joeyorlando,brojd,Matvey-Kuk" \
+  --set-env-vars="^@^GITHUB_TOKEN=YOUR_GITHUB_TOKEN@GITHUB_WEBHOOK_SECRET=YOUR_WEBHOOK_SECRET@CORE_TEAM_MEMBERS=ashlkv,iskhakov,Konstantinov-Innokentii,joeyorlando,brojd,Matvey-Kuk@REPUTATION_THRESHOLD=-80" \
   --memory 512Mi \
   --max-instances 1
 ```
@@ -84,9 +94,10 @@ gcloud run services update reputation-bot \
 
 ## Environment Variables
 
-- `GITHUB_TOKEN`: GitHub personal access token with repo scope
+- `GITHUB_TOKEN`: GitHub personal access token with repo scope (needs write permissions for closing PRs)
 - `GITHUB_WEBHOOK_SECRET`: Secret for webhook signature verification
 - `CORE_TEAM_MEMBERS`: Comma-separated list of core team GitHub usernames (ashlkv,iskhakov,Konstantinov-Innokentii,joeyorlando,brojd,Matvey-Kuk)
+- `REPUTATION_THRESHOLD`: Minimum reputation score to keep PRs open (default: -80)
 - `PORT`: Automatically set by Cloud Run
 
 ## Local Testing
