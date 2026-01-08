@@ -30,6 +30,7 @@ class GithubClient:
         open_prs = 0
         closed_prs = 0
         issues_created = 0
+        assigned_issues = 0
         comments_count = 0
         thumbs_up_from_core = 0
         thumbs_down_from_core = 0
@@ -119,6 +120,29 @@ class GithubClient:
                 logger.error(f"Fallback issue fetch also failed: {str(e)}")
                 # Leave count at 0
         
+        # Try to fetch assigned open issues
+        logger.info(f"Searching for open issues assigned to @{username}")
+        try:
+            # Search for open issues assigned to this user
+            assigned_query = f"repo:{repo_name} is:issue is:open assignee:{username}"
+            assigned_results = self.github.search_issues(query=assigned_query)
+            
+            # Count up to 100 assigned issues
+            assigned_issues = min(assigned_results.totalCount, 100)
+            logger.info(f"Found {assigned_issues} open issues assigned to @{username}")
+        except Exception as e:
+            logger.warning(f"Search API failed for assigned issues: {str(e)}")
+            # Try fallback if search fails
+            try:
+                issues = repo.get_issues(state='open', assignee=username)
+                for issue in issues[:100]:  # Limit to 100 issues
+                    if not issue.pull_request:
+                        assigned_issues += 1
+                logger.info(f"Fallback: Found {assigned_issues} open issues assigned to @{username}")
+            except Exception as e2:
+                logger.error(f"Fallback assigned issues fetch also failed: {str(e2)}")
+                # Leave count at 0
+        
         # Try to count comments
         logger.info(f"Counting comments by @{username}")
         try:
@@ -160,6 +184,7 @@ class GithubClient:
             'open_prs': open_prs,
             'closed_prs': closed_prs,
             'issues': issues_created,
+            'assigned_issues': assigned_issues,
             'comments': comments_count,
             'core_thumbs_up': thumbs_up_from_core,
             'core_thumbs_down': thumbs_down_from_core
@@ -185,9 +210,9 @@ class GithubClient:
         comment_count = 0
         # Limit to first 30 comments for performance
         for comment in list(issue.get_comments())[:30]:
-            # Skip London-Cat bot
+            # Skip bot's own comments (London-Cat is our bot account)
             if comment.user.login == 'London-Cat':
-                logger.info(f"Skipping comment from London-Cat bot")
+                logger.info(f"Skipping comment from London-Cat (our bot)")
                 continue
             participants.add(comment.user.login)
             comment_count += 1
@@ -197,9 +222,9 @@ class GithubClient:
         
         logger.info(f"Processed {comment_count} comments")
         
-        # Filter out bot accounts and London-Cat
+        # Filter out bot accounts (but not London-Cat from issue author position)
         before_filter = len(participants)
-        participants = {p for p in participants if not p.endswith('[bot]') and p != 'London-Cat'}
+        participants = {p for p in participants if not p.endswith('[bot]')}
         logger.info(f"Participants after filtering bots: {len(participants)} (filtered {before_filter - len(participants)} bots)")
         logger.info(f"Participants: {list(participants)}")
         
