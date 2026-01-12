@@ -246,16 +246,30 @@ class GithubClient:
     
     def close_pull_request(self, repo_name: str, pr_number: int):
         """Close a pull request."""
-        logger.info(f"Closing PR #{pr_number} in {repo_name}")
+        logger.info(f"Attempting to close PR #{pr_number} in {repo_name}")
         
         try:
             repo = self.github.get_repo(repo_name)
+            logger.info(f"Got repo: {repo.full_name}")
+            
+            # Get the PR
             pr = repo.get_pull(pr_number)
+            logger.info(f"Got PR #{pr.number}, current state: {pr.state}, URL: {pr.html_url}")
+            
+            # Close the PR using edit
             pr.edit(state='closed')
             logger.info(f"PR #{pr_number} closed successfully")
+            return True
         except Exception as e:
-            logger.error(f"Failed to close PR: {str(e)}")
-            raise
+            logger.error(f"Failed to close PR #{pr_number}: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            if hasattr(e, 'status'):
+                logger.error(f"Error status: {e.status}")
+            if hasattr(e, 'data'):
+                logger.error(f"Error data: {e.data}")
+            # Don't re-raise to avoid breaking the webhook processing
+            # The comment will still be posted even if closing fails
+            return False
     
     def extract_usernames_from_comment(self, comment_body: str) -> Set[str]:
         """Extract usernames from a bot comment body."""
